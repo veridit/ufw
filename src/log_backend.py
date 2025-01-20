@@ -19,7 +19,7 @@ from ufw.common import UFWError
 class UFWLogBackend:
     """Interface for logging backend"""
 
-    own_logging_options = ""
+    own_logging_options = []
 
     def get_log_target(self):
         """Return what is the logging target for the backend"""
@@ -28,5 +28,5 @@ class UFWLogBackend:
     def get_logging_options(self):
         """Return the logging options for this logging backend"""
         ret = []
-        ret.append(self.own_logging_options)
+        ret.extend(self.own_logging_options)
         return ret

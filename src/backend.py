@@ -134,7 +134,10 @@ class UFWBackend:
         given how it was configured in the config"""
         logging_backend = self.defaults.get("logging_backend", "kernel")
         if logging_backend == "kernel":
-            return ufw.kernel_log_backend.UFWLogBackendKernel()
+            lvl = ""
+            if self.defaults is not None and "kernel_syslog_level" in self.defaults:
+                lvl = self.defaults["kernel_syslog_level"]
+            return ufw.kernel_log_backend.UFWLogBackendKernel(syslog_level=lvl)
         elif logging_backend == "netfilter":
             return ufw.netfilter_log_backend.UFWLogBackendNetfilter()
         else:

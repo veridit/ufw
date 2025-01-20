@@ -18,10 +18,23 @@ import ufw.log_backend
 class UFWLogBackendKernel(ufw.log_backend.UFWLogBackend):
     """Instance class for UFWLogBackend"""
 
-    own_logging_options = "--log-prefix"
+    own_logging_options = ["--log-prefix"]
 
-    def __init__(self):
+    def __init__(self, syslog_level=""):
         ufw.log_backend.UFWLogBackend.__init__(self)
+
+        if syslog_level in [
+            "emerg",
+            "alert",
+            "crit",
+            "error",
+            "warning",
+            "warn",  # deprecated
+            "notice",
+            "info",
+            "debug",
+        ]:
+            self.own_logging_options = ["--log-level", syslog_level] + self.own_logging_options
 
     def get_log_target(self):
         return "LOG"

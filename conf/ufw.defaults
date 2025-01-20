@@ -34,6 +34,12 @@ MANAGE_BUILTINS=no
 # - netfilter - use the NFLOG logging target
 LOGGING_BACKEND="kernel"
 
+# The syslog level to use with kernel logging (the traditional LOG logging
+# target). Choose one of: emerg, alert, crit, error, warning, notice, info or
+# debug. If unset, use the kernel default (warning). If you change this, you
+# will need to reload the firewall for the changes to take effect.
+#KERNEL_SYSLOG_LEVEL="warning"
+
 #
 # IPT backend
 #

@@ -47,4 +47,40 @@ for i in allow deny limit reject ; do
     done
 done
 
+sed -i 's/LOGGING_BACKEND=.*/LOGGING_BACKEND="kernel"/' $TESTPATH/etc/default/ufw
+sed -i 's/#KERNEL_SYSLOG_LEVEL=.*/KERNEL_SYSLOG_LEVEL="info"/' $TESTPATH/etc/default/ufw
+
+echo "TESTING LOG RULES WITH KERNEL_SYSLOG_LEVEL" >> $TESTTMP/result
+for i in allow deny limit reject ; do
+    for j in log log-all ; do
+        do_cmd "0" null $i $j 23
+        do_cmd "0" null $i $j smtp
+        do_cmd "0" null $i $j tftp
+        do_cmd "0" null $i $j daytime
+        do_cmd "0" null $i $j Samba
+        do_cmd "0" null $i $j Apache
+        do_cmd "0" null $i $j from 192.168.0.1 port smtp to 10.0.0.1 port smtp
+        do_cmd "0" null $i $j from 192.168.0.1 app Samba to 10.0.0.1 app Samba
+
+        echo "contents of user*.rules:" >> $TESTTMP/result
+        cat $TESTCONFIG/user.rules >> $TESTTMP/result
+        cat $TESTCONFIG/user6.rules >> $TESTTMP/result
+
+        # now delete the rules
+        do_cmd "0" null delete $i $j 23
+        do_cmd "0" null delete $i $j smtp
+        do_cmd "0" null delete $i $j tftp
+        do_cmd "0" null delete $i $j daytime
+        do_cmd "0" null delete $i $j Samba
+        do_cmd "0" null delete $i $j Apache
+        do_cmd "0" null delete $i $j from 192.168.0.1 port smtp to 10.0.0.1 port smtp
+        do_cmd "0" null delete $i $j from 192.168.0.1 app Samba to 10.0.0.1 app Samba
+
+        echo "contents of user*.rules:" >> $TESTTMP/result
+        cat $TESTCONFIG/user.rules >> $TESTTMP/result
+        cat $TESTCONFIG/user6.rules >> $TESTTMP/result
+    done
+done
+sed -i 's/^KERNEL_SYSLOG_LEVEL=.*/#KERNEL_SYSLOG_LEVEL="warning"/' $TESTPATH/etc/default/ufw
+
 exit 0

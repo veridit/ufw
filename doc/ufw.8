@@ -434,6 +434,12 @@ consider the security ramifications before using a default \fBallow\fR policy.
 \fBLOGGING_BACKEND\fR option in #CONFIG_PREFIX#/default/ufw.
 
 .PP
+If \fBLOGGING_BACKEND\fR is set to \fBkernel\fR, \fBKERNEL_SYSLOG_LEVEL\fR may
+be used to set the kernel syslog level to use when logging. KERNEL_SYSLOG_LEVEL
+may be 'emerg', 'alert', 'crit', 'error', 'warning', 'notice', 'info'
+or 'debug'. When unset, the default level is 'warning'.
+
+.PP
 \fBufw\fR supports multiple logging levels. \fBufw\fR defaults to a loglevel
 of 'low' when a loglevel is not specified. Users may specify a loglevel with:
 

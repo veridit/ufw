@@ -18,7 +18,7 @@ import ufw.log_backend
 class UFWLogBackendNetfilter(ufw.log_backend.UFWLogBackend):
     """Instance class for UFWLogBackend"""
 
-    own_logging_options = "--nflog-prefix"
+    own_logging_options = ["--nflog-prefix"]
 
     def __init__(self):
         ufw.log_backend.UFWLogBackend.__init__(self)

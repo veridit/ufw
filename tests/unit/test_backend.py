@@ -21,6 +21,8 @@ import tests.unit.support
 import ufw.backend
 import ufw.backend_iptables
 import ufw.common
+import ufw.kernel_log_backend
+import ufw.netfilter_log_backend
 
 
 class BackendTestCase(unittest.TestCase):
@@ -44,7 +46,49 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(self.backend.defaults["enabled"], "no")
         self.assertEqual(self.backend.defaults["ipv6"], "yes")
         self.assertEqual(self.backend.defaults["default_application_policy"], "skip")
+        self.assertEqual(self.backend.defaults["logging_backend"], "kernel")
+        self.assertTrue("kernel_syslog_level" not in self.backend.defaults)
 
+    def test_get_logging_backend(self):
+        """Test get_logging_backend()"""
+        be = ufw.backend_iptables.UFWBackendIptables(dryrun=True)
+
+        be.defaults["logging_backend"] = "netfilter"
+        obj = be.get_logging_backend()
+        self.assertIsInstance(obj, ufw.netfilter_log_backend.UFWLogBackendNetfilter)
+        self.assertEqual(obj.get_log_target(), "NFLOG")
+        self.assertEqual(obj.get_logging_options(), ["--nflog-prefix"])
+
+        be.defaults["logging_backend"] = "kernel"
+        obj = be.get_logging_backend()
+        self.assertIsInstance(obj, ufw.kernel_log_backend.UFWLogBackendKernel)
+        self.assertEqual(obj.get_log_target(), "LOG")
+        self.assertEqual(obj.get_logging_options(), ["--log-prefix"])
+
+        # bad syslog level
+        be.defaults["kernel_syslog_level"] = "bad"
+        obj = be.get_logging_backend()
+        self.assertIsInstance(obj, ufw.kernel_log_backend.UFWLogBackendKernel)
+        self.assertEqual(obj.get_log_target(), "LOG")
+        self.assertEqual(obj.get_logging_options(), ["--log-prefix"])
+
+        # good syslog level
+        for lvl in [
+            "emerg",
+            "alert",
+            "crit",
+            "error",
+            "warning",
+            "warn",
+            "notice",
+            "info",
+            "debug"
+        ]:
+            be.defaults["kernel_syslog_level"] = lvl
+            obj = be.get_logging_backend()
+            self.assertIsInstance(obj, ufw.kernel_log_backend.UFWLogBackendKernel)
+            self.assertEqual(obj.get_log_target(), "LOG")
+            self.assertEqual(obj.get_logging_options(), ["--log-level", lvl, "--log-prefix"])
 
 def test_main():  # used by runner.py
     tests.unit.support.run_unittest(BackendTestCase)
