@@ -28,6 +28,13 @@ DEFAULT_APPLICATION_POLICY="SKIP"
 # non-ufw managed firewall rules
 MANAGE_BUILTINS=no
 
+# By default, ufw does not manage the Docker DOCKER-USER chain. Set this to
+# 'yes' to have ufw insert rules into the DOCKER-USER chain so that Docker
+# published ports are subject to ufw's forwarding rules. Docker must be
+# installed and running for this to have effect. See 'man ufw-framework' for
+# details.
+MANAGE_DOCKER=no
+
 # Set the logging backend to use. If you change this, you will need to reload
 # the firewall for the changes to take effect.
 # - kernel - use the traditional LOG logging target

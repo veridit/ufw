@@ -336,6 +336,45 @@ or through the host, then an 'in on lxdbr0' should be used; if the traffic is
 from anywhere out to the guest, then an 'out on lxdbr0' should be used. As
 always, additional rules may be needed depending on your default policy.
 
+.PP
+When using ufw with Docker, published container ports (\fB\-p 8080:80\fR)
+bypass the INPUT chain via NAT rules, making them accessible even when ufw
+blocks the port. To address this, ufw can manage Docker's DOCKER\-USER chain
+by setting MANAGE_DOCKER to 'yes' in #CONFIG_PREFIX#/default/ufw. When
+enabled, ufw inserts rules into the DOCKER\-USER chain at startup that subject
+forwarded traffic to ufw's routing rules. This is IPv4 only, as Docker's
+DOCKER\-USER chain only exists in iptables.
+.PP
+When MANAGE_DOCKER is enabled, ufw populates the DOCKER\-USER chain with rules
+that:
+.IP \(bu
+Jump to ufw\-user\-forward, so that \fBufw route\fR rules are evaluated first
+.IP \(bu
+Allow established and related connections
+.IP \(bu
+Drop invalid packets
+.IP \(bu
+Allow traffic from Docker bridge interfaces (docker0, br\-*), covering
+container\-to\-container communication and Docker Compose networks
+.IP \(bu
+Log and drop new connections arriving from external interfaces
+
+.PP
+To allow external access to a published container port, use \fBufw route\fR
+rules. For example, to allow HTTP traffic to a container:
+
+  ufw route allow proto tcp to any port 80
+
+.PP
+Docker must be running when ufw starts (or reloads) for this to take effect. If
+Docker is started after ufw, reload ufw:
+
+  ufw reload
+
+.PP
+On stop or disable, ufw restores the DOCKER\-USER chain to its default state
+(a single RETURN rule) and removes the ufw\-docker\-logging\-deny chain.
+
 .SH SEE ALSO
 .PP
 \fBufw\fR(8), \fBiptables\fR(8), \fBip6tables\fR(8), \fBiptables\-restore\fR(8), \fBip6tables\-restore\fR(8), \fBsysctl\fR(8), \fBsysctl.conf\fR(5)

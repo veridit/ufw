@@ -577,6 +577,8 @@ class UFWBackendIptables(ufw.backend.UFWBackend):
             if rc != 0:
                 err_msg = _("problem running ufw-init\n%s" % out)
                 raise UFWError(err_msg)
+            if out.strip():
+                msg(out.strip())
 
             if "loglevel" not in self.defaults or self.defaults["loglevel"] not in list(
                 self.loglevels.keys()

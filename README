@@ -158,6 +158,13 @@ Alternately, ufw may also take full control of the firewall by setting
 MANAGE_BUILTINS=yes in /etc/defaults/ufw. This will flush all the built-in
 rules and delete the non-built-in rules on start, stop and reload.
 
+Docker publishes container ports via NAT rules that bypass ufw's INPUT chain.
+To manage this, set MANAGE_DOCKER=yes in /etc/default/ufw. When enabled, ufw
+hooks into Docker's DOCKER-USER chain at startup so that forwarded traffic to
+containers is subject to ufw's routing rules. Use 'ufw route allow' to
+selectively open container ports (e.g., ufw route allow proto tcp to any port
+80). See 'man ufw-framework' for details.
+
 In addition to the above, the following tracking chains are setup last to
 support stateful tracking of NEW connections when the default policy is set to
 ACCEPT:

@@ -104,6 +104,12 @@ delete_chains() {
             $exe -X $c 2>/dev/null || true
         fi
     done
+
+    # Clean up Docker-specific chain (IPv4 only)
+    if [ -z "$1" ] && [ "$MANAGE_DOCKER" = "yes" ]; then
+        iptables -F ufw-docker-logging-deny 2>/dev/null || true
+        iptables -X ufw-docker-logging-deny 2>/dev/null || true
+    fi
 }
 
 ufw_start() {
@@ -384,6 +390,41 @@ ufw_start() {
 "COMMIT\n" $input_pol $forward_pol $output_pol | $exe-restore -n || error="yes"
         done
 
+        # Docker integration: hook ufw chains into DOCKER-USER
+        if [ "$MANAGE_DOCKER" = "yes" ]; then
+            if iptables -L DOCKER-USER -n >/dev/null 2>&1; then
+                # Flush Docker's default RETURN rule so we can insert ours
+                iptables -F DOCKER-USER || error="yes"
+
+                # Create ufw-docker-logging-deny chain
+                printf "*filter\n:ufw-docker-logging-deny - [0:0]\nCOMMIT\n" | \
+                    iptables-restore -n 2>/dev/null || true
+
+                # Populate DOCKER-USER with ufw integration rules.
+                # Traffic from Docker bridge interfaces (docker0, br-*)
+                # is internal and allowed through. Everything else is
+                # subject to ufw-user-forward; unmatched new connections
+                # from external interfaces are logged and dropped.
+                printf "*filter\n\
+-A DOCKER-USER -j ufw-user-forward\n\
+-A DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN\n\
+-A DOCKER-USER -m conntrack --ctstate INVALID -j DROP\n\
+-A DOCKER-USER -j RETURN -i docker0\n\
+-A DOCKER-USER -j RETURN -i br-+\n\
+-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW\n\
+-A DOCKER-USER -j RETURN\n\
+-A ufw-docker-logging-deny -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix \"[UFW DOCKER BLOCK] \"\n\
+-A ufw-docker-logging-deny -j DROP\n\
+COMMIT\n" | iptables-restore -n || error="yes"
+            fi
+        elif iptables -L DOCKER-USER -n >/dev/null 2>&1; then
+            out="${out}\nWARNING: Docker is running but MANAGE_DOCKER is not enabled."
+            out="${out}\nDocker publishes container ports that bypass ufw firewall rules."
+            out="${out}\nTo fix, enable MANAGE_DOCKER in #CONFIG_PREFIX#/default/ufw and reload:\n"
+            out="${out}\n  sudo sed -i 's/MANAGE_DOCKER=no/MANAGE_DOCKER=yes/' #CONFIG_PREFIX#/default/ufw"
+            out="${out}\n  sudo ufw reload\n"
+        fi
+
         if [ ! -z "$IPT_SYSCTL" ] && [ -s "$IPT_SYSCTL" ]; then
             sysctl -e -q -p $IPT_SYSCTL || true
         fi
@@ -425,6 +466,19 @@ ufw_stop() {
     # If we manage the builtins, just return
     if [ "$MANAGE_BUILTINS" = "yes" ]; then
         flush_builtins || error="yes"
+
+        # Docker integration cleanup
+        if [ "$MANAGE_DOCKER" = "yes" ]; then
+            if iptables -L DOCKER-USER -n >/dev/null 2>&1; then
+                iptables -F DOCKER-USER 2>/dev/null || true
+                iptables -A DOCKER-USER -j RETURN 2>/dev/null || true
+            fi
+            if iptables -L ufw-docker-logging-deny -n >/dev/null 2>&1; then
+                iptables -F ufw-docker-logging-deny 2>/dev/null || true
+                iptables -X ufw-docker-logging-deny 2>/dev/null || true
+            fi
+        fi
+
         if [ -x "$RULES_PATH/after.init" ]; then
             "$RULES_PATH/after.init" stop || error="yes"
         fi
@@ -450,6 +504,18 @@ ufw_stop() {
         $exe -P OUTPUT ACCEPT || error="yes"
         $exe -P FORWARD ACCEPT || error="yes"
     done
+
+    # Docker integration cleanup
+    if [ "$MANAGE_DOCKER" = "yes" ]; then
+        if iptables -L DOCKER-USER -n >/dev/null 2>&1; then
+            iptables -F DOCKER-USER 2>/dev/null || true
+            iptables -A DOCKER-USER -j RETURN 2>/dev/null || true
+        fi
+        if iptables -L ufw-docker-logging-deny -n >/dev/null 2>&1; then
+            iptables -F ufw-docker-logging-deny 2>/dev/null || true
+            iptables -X ufw-docker-logging-deny 2>/dev/null || true
+        fi
+    fi
 
     if [ -x "$RULES_PATH/after.init" ]; then
         if ! "$RULES_PATH/after.init" stop ; then
